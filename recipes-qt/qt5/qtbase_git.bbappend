@@ -1,0 +1,6 @@
+
+PACKAGECONFIG += " \
+    dbus \
+    linuxfb \
+"
+
