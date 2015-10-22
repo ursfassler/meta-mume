@@ -1,6 +1,7 @@
 LICENSE = "MIT"
 
 inherit core-image
+inherit populate_sdk_qt5
 
 IMAGE_INSTALL = " \
   packagegroup-core-boot \
@@ -28,8 +29,12 @@ IMAGE_INSTALL = " \
   perf \
   procps \
   qtbase \
+  qtbase-fonts \
   qtbase-plugins \
   qtbase-tools \
+  qtsvg \
+  qttools \
+  qtxmlpatterns \
   screen \
   strace \
   sysstat \
