@@ -10,6 +10,7 @@ IMAGE_INSTALL = " \
   bash \
   binutils \
   bzip2 \
+  cppunit \
   devmem2 \
   e2fsprogs \
   e2fsprogs-mke2fs \
@@ -18,9 +19,12 @@ IMAGE_INSTALL = " \
   file \
   gdb \
   gdbserver \
+  gmock \
+  gtest \
   htop \
   i2c-tools \
   iputils \
+  libtinyxml \
   libudev \
   mtd-utils \
   nginx \
@@ -47,6 +51,7 @@ IMAGE_INSTALL = " \
 
 IMAGE_FEATURES += " \
   package-management \
+  debug-tweaks \
 "
 
 #IMAGE_BOOTLOADER = "u-boot"
