@@ -1,0 +1,529 @@
+From 18a0e80f0e0a63f34a0bfba6660f3f41e46e29b2 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Urs=20F=C3=A4ssler?= <urs@bitzgi.ch>
+Date: Sun, 25 Oct 2015 16:35:50 +0100
+Subject: [PATCH 2/3] mume driver
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Urs Fässler <urs@bitzgi.ch>
+---
+ drivers/misc/Kconfig  |   6 +
+ drivers/misc/Makefile |   1 +
+ drivers/misc/mume.c   | 478 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 485 insertions(+)
+ create mode 100644 drivers/misc/mume.c
+
+diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
+index 42c3852..b41ecd4 100644
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -515,6 +515,12 @@ config VEXPRESS_SYSCFG
+ 	  bus. System Configuration interface is one of the possible means
+ 	  of generating transactions on this bus.
+ 
++config MUME
++       tristate "Most Useless Machine Ever! driver"
++       depends on GPIOLIB && PWM && SYSFS && OF
++       help
++         Driver for the Most Useless Machine Ever!
++
+ source "drivers/misc/c2port/Kconfig"
+ source "drivers/misc/eeprom/Kconfig"
+ source "drivers/misc/cb710/Kconfig"
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+index d056fb7..46e1474 100644
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -55,3 +55,4 @@ obj-$(CONFIG_GENWQE)		+= genwqe/
+ obj-$(CONFIG_ECHO)		+= echo/
+ obj-$(CONFIG_VEXPRESS_SYSCFG)	+= vexpress-syscfg.o
+ obj-$(CONFIG_CXL_BASE)		+= cxl/
++obj-$(CONFIG_MUME)              += mume.o
+diff --git a/drivers/misc/mume.c b/drivers/misc/mume.c
+new file mode 100644
+index 0000000..f936aeb
+--- /dev/null
++++ b/drivers/misc/mume.c
+@@ -0,0 +1,478 @@
++/*
++ * Copyright (C) 2015 Urs Fässler <urs@bitzgi.ch>
++ *
++ * Driver for the Most Useless Machine Ever!
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/err.h>
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/device.h>
++#include <linux/gpio/consumer.h>
++#include <linux/pwm.h>
++#include <linux/interrupt.h>
++#include <linux/sched.h>
++#include <linux/wait.h>
++
++/* ---- defaults ---- */
++
++#define DEFAULT_SERVO_CLOSE_NS		(2*1000*1000)
++#define DEFAULT_SERVO_OPEN_NS		(1*1000*1000)
++#define DEFAULT_SERVO_PERIOD_NS		(10*1000*1000)
++#define DEBOUNCE_TIME_US		(10*1000)
++
++/* ---- state ---- */
++
++enum mume_mode {
++	MM_AUTO = 0,
++	MM_FORCE_CLOSE = 1,
++	MM_FORCE_OPEN = 2
++};
++
++static const char *const MODE_NAME[] = {
++	"auto",
++	"force_close",
++	"force_open",
++	NULL
++};
++
++struct mume_class {
++	struct device		*dev;
++
++	enum mume_mode		mode;
++
++	struct gpio_desc	*switch_;
++	uint32_t		switch_count;
++	wait_queue_head_t	switch_queue;
++
++	struct pwm_device	*servo;
++	uint32_t		servo_open_pos_ns;
++	uint32_t		servo_close_pos_ns;
++};
++
++/* ---- prototypes ---- */
++
++static bool mume_switch_on(const struct mume_class *inst);
++static int mume_servo_close(struct mume_class *inst);
++static int mume_servo_open(struct mume_class *inst);
++
++/* ---- business logic ---- */
++
++static int mume_switch_event_on(struct mume_class *inst)
++{
++	inst->switch_count++;
++
++	if (inst->mode == MM_AUTO)
++		return mume_servo_open(inst);
++	else
++		return 0;
++}
++
++static int mume_switch_event_off(struct mume_class *inst)
++{
++	if (inst->mode == MM_AUTO)
++		return mume_servo_close(inst);
++	else
++		return 0;
++}
++
++static int mume_set_open_pos_ns(struct mume_class *inst, uint32_t pos_ns)
++{
++	inst->servo_open_pos_ns = pos_ns;
++
++	switch (inst->mode) {
++	case MM_AUTO:
++		if (mume_switch_on(inst))
++			return mume_servo_open(inst);
++		break;
++	case MM_FORCE_OPEN:
++		return mume_servo_open(inst);
++	default:
++		return 0;
++	}
++
++	return 0;
++}
++
++static int mume_set_close_pos_ns(struct mume_class *inst, uint32_t pos_ns)
++{
++	inst->servo_close_pos_ns = pos_ns;
++
++	switch (inst->mode) {
++	case MM_AUTO:
++		if (!mume_switch_on(inst))
++			return mume_servo_close(inst);
++		break;
++	case MM_FORCE_CLOSE:
++		return mume_servo_close(inst);
++	default:
++		return 0;
++	}
++
++	return 0;
++}
++
++static int mume_set_mode(struct mume_class *inst, enum mume_mode mode)
++{
++	if (inst->mode == mode)
++		return 0;
++
++	switch (mode) {
++	case MM_AUTO:
++		inst->mode = mode;
++		if (mume_switch_on(inst))
++			return mume_servo_open(inst);
++		else
++			return mume_servo_close(inst);
++	case MM_FORCE_CLOSE:
++		inst->mode = mode;
++		return mume_servo_close(inst);
++	case MM_FORCE_OPEN:
++		inst->mode = mode;
++		return mume_servo_open(inst);
++	}
++
++	return -EINVAL;
++}
++
++/* ---- helper ---- */
++
++static bool mume_switch_on(const struct mume_class *inst)
++{
++	return gpiod_get_value(inst->switch_) != 0;
++}
++
++static int mume_servo_close(struct mume_class *inst)
++{
++	return pwm_config(inst->servo, inst->servo_close_pos_ns,
++		DEFAULT_SERVO_PERIOD_NS);
++}
++
++static int mume_servo_open(struct mume_class *inst)
++{
++	return pwm_config(inst->servo, inst->servo_open_pos_ns,
++		DEFAULT_SERVO_PERIOD_NS);
++}
++
++static int mume_parse_mode(const char *mode)
++{
++	int idx;
++
++	for (idx = 0; MODE_NAME[idx] != NULL; idx++)
++		if (sysfs_streq(MODE_NAME[idx], mode))
++			return idx;
++
++	return -EINVAL;
++}
++
++/* ---- sysfs ---- */
++
++static ssize_t switch_show(struct device *dev,
++				struct device_attribute *mattr,
++				char *data)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	const struct mume_class *inst = platform_get_drvdata(pdev);
++
++	if (mume_switch_on(inst))
++		return sprintf(data, "on\n");
++	else
++		return sprintf(data, "off\n");
++}
++static const DEVICE_ATTR_RO(switch);
++
++static ssize_t count_show(struct device *dev,
++				struct device_attribute *mattr,
++				char *data)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	const struct mume_class *inst = platform_get_drvdata(pdev);
++
++	return sprintf(data, "%d\n", inst->switch_count);
++}
++static const DEVICE_ATTR_RO(count);
++
++static ssize_t count_wait_show(struct device *dev,
++				struct device_attribute *mattr,
++				char *data)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	struct mume_class *inst = platform_get_drvdata(pdev);
++
++	int ret;
++	const uint32_t old_count = inst->switch_count;
++
++	ret = wait_event_interruptible(inst->switch_queue,
++		old_count != inst->switch_count);
++	if (ret != 0)
++		return ret;
++
++	return sprintf(data, "%d\n", inst->switch_count);
++}
++static const DEVICE_ATTR_RO(count_wait);
++
++static ssize_t modes_show(struct device *dev,
++				struct device_attribute *mattr,
++				char *data)
++{
++	int wpos = 0;
++	int idx;
++
++	for (idx = 0; MODE_NAME[idx] != NULL; idx++)
++		wpos += sprintf(&data[wpos], "%s\n", MODE_NAME[idx]);
++
++	return wpos;
++}
++static const DEVICE_ATTR_RO(modes);
++
++static ssize_t mode_show(struct device *dev,
++			       struct device_attribute *mattr,
++			       char *data)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	const struct mume_class *inst = platform_get_drvdata(pdev);
++
++	return sprintf(data, "%s\n", MODE_NAME[inst->mode]);
++}
++
++static ssize_t mode_store(struct device *dev,
++				struct device_attribute *mattr,
++				const char *data, size_t count)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	struct mume_class *inst = platform_get_drvdata(pdev);
++
++	int mode;
++
++	mode = mume_parse_mode(data);
++	if (mode < 0)
++		return mode;
++
++	mume_set_mode(inst, mode);
++
++	return count;
++}
++static const DEVICE_ATTR_RW(mode);
++
++static ssize_t open_pos_ns_show(struct device *dev,
++			       struct device_attribute *mattr,
++			       char *data)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	const struct mume_class *inst = platform_get_drvdata(pdev);
++
++	return sprintf(data, "%d\n", inst->servo_open_pos_ns);
++}
++
++static ssize_t open_pos_ns_store(struct device *dev,
++				struct device_attribute *mattr,
++				const char *data, size_t count)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	struct mume_class *inst = platform_get_drvdata(pdev);
++
++	uint32_t pos;
++	int ret;
++
++	ret = kstrtou32(data, 10, &pos);
++	if (ret != 0)
++		return ret;
++
++	ret = mume_set_open_pos_ns(inst, pos);
++	if (ret != 0)
++		return ret;
++
++	return count;
++}
++static const DEVICE_ATTR_RW(open_pos_ns);
++
++static ssize_t close_pos_ns_show(struct device *dev,
++			       struct device_attribute *mattr,
++			       char *data)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	const struct mume_class *inst = platform_get_drvdata(pdev);
++
++	return sprintf(data, "%d\n", inst->servo_close_pos_ns);
++}
++
++static ssize_t close_pos_ns_store(struct device *dev,
++				struct device_attribute *mattr,
++				const char *data, size_t count)
++{
++	const struct platform_device *pdev = to_platform_device(dev);
++	struct mume_class *inst = platform_get_drvdata(pdev);
++
++	uint32_t pos;
++	int ret;
++
++	ret = kstrtou32(data, 10, &pos);
++	if (ret != 0)
++		return ret;
++
++	ret = mume_set_close_pos_ns(inst, pos);
++	if (ret != 0)
++		return ret;
++
++	return count;
++}
++static const DEVICE_ATTR_RW(close_pos_ns);
++
++static const struct attribute *mume_attrs[] = {
++	&dev_attr_switch.attr,
++	&dev_attr_count.attr,
++	&dev_attr_count_wait.attr,
++	&dev_attr_mode.attr,
++	&dev_attr_modes.attr,
++	&dev_attr_open_pos_ns.attr,
++	&dev_attr_close_pos_ns.attr,
++	NULL
++};
++
++/* ---- interrupt ---- */
++
++static irqreturn_t mume_switch_isr(int irq, void *data)
++{
++	struct mume_class *inst = data;
++	int ret;
++
++	if (mume_switch_on(inst))
++		ret = mume_switch_event_on(inst);
++	else
++		ret = mume_switch_event_off(inst);
++
++	if (ret != 0)
++		dev_err(inst->dev, "can not set servo position");
++
++	wake_up_interruptible(&inst->switch_queue);
++
++	return IRQ_HANDLED;
++}
++
++/* ---- init/deinit ---- */
++
++static int mume_init_switch(struct mume_class *inst)
++{
++	int irq, ret;
++
++	inst->switch_count = 0;
++
++	init_waitqueue_head(&inst->switch_queue);
++
++	ret = gpiod_set_debounce(inst->switch_, DEBOUNCE_TIME_US);
++	if (ret < 0)
++		return ret;
++
++	irq = gpiod_to_irq(inst->switch_);
++	if (irq < 0)
++		return irq;
++
++	ret = devm_request_threaded_irq(inst->dev, irq, mume_switch_isr, NULL,
++		IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING, "mume", inst);
++	if (ret < 0)
++		return ret;
++
++	return 0;
++}
++
++static int mume_init_servo(struct mume_class *inst)
++{
++	int ret;
++
++	inst->servo_open_pos_ns = DEFAULT_SERVO_OPEN_NS;
++	inst->servo_close_pos_ns = DEFAULT_SERVO_CLOSE_NS;
++
++	ret = mume_servo_close(inst);
++	if (ret != 0)
++		return ret;
++
++	ret = pwm_enable(inst->servo);
++	if (ret != 0)
++		return ret;
++
++	return 0;
++}
++
++static int mume_probe(struct platform_device *pdev)
++{
++	int ret;
++	struct mume_class *inst;
++
++	inst = devm_kzalloc(&pdev->dev, sizeof(*inst), GFP_KERNEL);
++	if (!inst)
++		return -ENOMEM;
++
++	inst->dev = &pdev->dev;
++	inst->mode = MM_AUTO;
++
++	inst->switch_ = devm_gpiod_get(&pdev->dev, NULL, GPIOD_IN);
++	if (IS_ERR(inst->switch_)) {
++		dev_err(&pdev->dev, "could not get gpio");
++		return PTR_ERR(inst->switch_);
++	}
++
++	inst->servo = devm_pwm_get(&pdev->dev, NULL);
++	if (IS_ERR(inst->servo)) {
++		dev_err(&pdev->dev, "could not get pwm");
++		return PTR_ERR(inst->servo);
++	}
++
++	ret = mume_init_switch(inst);
++	if (ret != 0) {
++		dev_err(&pdev->dev, "can not set up switch");
++		return ret;
++	}
++
++	ret = mume_init_servo(inst);
++	if (ret != 0) {
++		dev_err(&pdev->dev, "can not set up pwm");
++		return ret;
++	}
++
++	platform_set_drvdata(pdev, inst);
++
++	ret = sysfs_create_files(&pdev->dev.kobj, mume_attrs);
++	if (ret != 0) {
++		dev_err(&pdev->dev, "can not create sysfs files");
++		return ret;
++	}
++
++	return 0;
++}
++
++static int mume_remove(struct platform_device *pdev)
++{
++	struct mume_class *inst = platform_get_drvdata(pdev);
++
++	pwm_disable(inst->servo);
++	sysfs_remove_files(&pdev->dev.kobj, mume_attrs);
++
++	return 0;
++}
++
++/* ---- registration ---- */
++
++static const struct platform_device_id mume_id[] = {
++	{ "mume", 0},
++	{ }
++};
++MODULE_DEVICE_TABLE(platform, mume_id);
++
++static struct platform_driver mume_driver = {
++	.driver = {
++		.name = "mume",
++		.owner = THIS_MODULE,
++	},
++	.probe = mume_probe,
++	.remove = mume_remove,
++	.id_table = mume_id,
++};
++module_platform_driver(mume_driver);
++
++MODULE_AUTHOR("Urs Fässler <urs@bitzgi.ch>");
++MODULE_DESCRIPTION("Most Useless Machine Ever!");
++MODULE_LICENSE("GPL v2");
+-- 
+2.6.1
+
