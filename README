@@ -1,0 +1,33 @@
+This layer depends on:
+
+URI: git://github.com/meta-qt5/meta-qt5.git
+branch: fido
+revision: HEAD
+
+URI: git://git.openembedded.org/meta-openembedded/meta-oe
+branch: fido
+revision: HEAD
+
+URI: git://git.openembedded.org/meta-openembedded/meta-webserver
+branch: fido
+revision: HEAD
+
+URI: git://git.openembedded.org/meta-openembedded/meta-networking
+branch: fido
+revision: HEAD
+
+URI: git://git.openembedded.org/meta-openembedded/meta-python
+branch: fido
+revision: HEAD
+
+URI: git://git.openembedded.org/meta-openembedded/meta-ruby
+branch: fido
+revision: HEAD
+
+URI: git://git.yoctoproject.org/meta-ti
+branch: fido
+revision: HEAD
+
+Branch maintainer:
+Urs Fässler
+
