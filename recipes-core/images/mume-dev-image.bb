@@ -7,6 +7,9 @@ IMAGE_INSTALL = " \
   packagegroup-core-boot \
   packagegroup-core-ssh-openssh \
   \
+  kernel-image \
+  kernel-devicetree \
+  \
   bash \
   binutils \
   bzip2 \
