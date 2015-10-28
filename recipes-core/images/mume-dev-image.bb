@@ -19,6 +19,7 @@ IMAGE_INSTALL = " \
   e2fsprogs-mke2fs \
   ethtool \
   evtest \
+  fcgi \
   file \
   gdb \
   gdbserver \
@@ -43,6 +44,7 @@ IMAGE_INSTALL = " \
   qttools \
   qtxmlpatterns \
   screen \
+  spawn-fcgi \
   strace \
   sysstat \
   tar \
