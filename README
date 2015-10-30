@@ -1,27 +1,31 @@
 This layer depends on:
 
 URI: git://github.com/meta-qt5/meta-qt5.git
-branch: fido
+branch: jethro
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-oe
-branch: fido
+branch: jethro
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-webserver
-branch: fido
+branch: jethro
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-networking
-branch: fido
+branch: jethro
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-python
-branch: fido
+branch: jethro
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-ruby
-branch: fido
+branch: jethro
+revision: HEAD
+
+URI: git://git.openembedded.org/meta-openembedded/meta-systemd
+branch: jethro
 revision: HEAD
 
 URI: git://git.yoctoproject.org/meta-ti
