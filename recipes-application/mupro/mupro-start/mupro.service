@@ -1,0 +1,10 @@
+[Unit]
+Description=mupro service
+After=nginx.target
+
+[Service]
+ExecStart=/usr/bin/spawn-fcgi -p 8000 -n /usr/bin/mupro
+
+[Install]
+WantedBy=multi-user.target
+
