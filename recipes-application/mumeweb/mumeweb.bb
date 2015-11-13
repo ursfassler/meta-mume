@@ -8,7 +8,7 @@ inherit qmake5
 DEPENDS += "qtbase fcgi"
 RDEPENDS_{PN} += "mumesrv qtbase dbus fcgi"
 
-SRCREV = "2a4cfef009874a4fefb7cc2ab0cbb104916a6ddd"
+SRCREV = "6474d3224587cb19a768e827b6dfc3925f2088b7"
 
 SRC_URI = " \
 	git://github.com/ursfassler/mumeweb.git;protocol=https;branch=master \
