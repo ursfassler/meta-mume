@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://COPYING;md5=9eef91148a9b14ec7f9df333daebc746"
 inherit qmake5
 
 DEPENDS += "qtbase"
-RDEPENDS_{PN} += "qtbase dbus"
+RDEPENDS_${PN} += "qtbase dbus"
 
 SRCREV = "3cbe61c102d9574ccd039b112704f0a42a2112f8"
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Mume D-Bus Service
+After=dbus.target
+Wants=dbus.target
+
+[Service]
+ExecStart=/usr/bin/mumesrv /sys/bus/platform/devices/mume/
+
+[Install]
+WantedBy=multi-user.target
+

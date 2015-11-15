@@ -1,0 +1,15 @@
+[Unit]
+Description=Mume FastCGI Service
+After=dbus.target
+Wants=dbus.target
+After=mumesrv.service
+Wants=mumesrv.service
+After=nginx.service
+Wants=nginx.service
+
+[Service]
+ExecStart=/usr/bin/spawn-fcgi -p 50005 -n /usr/bin/mumeweb
+
+[Install]
+WantedBy=multi-user.target
+
