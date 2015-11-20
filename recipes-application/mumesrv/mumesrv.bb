@@ -8,7 +8,7 @@ inherit qmake5
 DEPENDS += "qtbase"
 RDEPENDS_${PN} += "qtbase dbus"
 
-SRCREV = "b7422cf905a672edef116dfe34b2f28a69f81ea5"
+SRCREV = "ff563c3e6b7da110ea436cf683be6859eab44afb"
 
 SRC_URI = " \
 	git://github.com/ursfassler/mumesrv.git;protocol=https;branch=master \
