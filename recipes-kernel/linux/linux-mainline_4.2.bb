@@ -29,8 +29,8 @@ S = "${WORKDIR}/git"
 
 BRANCH = "linux-4.2.y"
 
-SRCREV = "fcba09f2b0bf27eeaa1d4d439edb649585f35040"
-PV = "4.2.3"
+SRCREV = "1c02865136fee1d10d434dc9e3616c8e39905e9b"
+PV = "4.2.6"
 
 SRC_URI = " \
 	git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git;protocol=git;branch=${BRANCH} \
