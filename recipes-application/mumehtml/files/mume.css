@@ -1,0 +1,52 @@
+
+
+table {
+  border-collapse: collapse;
+}
+
+th {
+  background: lightblue;
+}
+
+td, th {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+td, th {
+  text-align: left;
+}
+
+td+td, th+th {
+  text-align: right;
+}
+
+td+td+td, th+th+th {
+  text-align: left;
+}
+
+table, th, td {
+  border: 1px solid black;
+}
+
+input[type="number"] {
+   width:3em;
+}
+
+button {
+  margin: 4px;
+}
+
+h1 {
+  font-size: 120%;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+body {
+  font-family: Sans-serif;
+}
+
+

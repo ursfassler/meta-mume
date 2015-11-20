@@ -17,7 +17,7 @@ RDEPENDS_${PN} += " \
   fcgi \
 "
 
-SRCREV = "84cbd2a682186de6a22c1baf8eb66738d2bb56cf"
+SRCREV = "c674b5e8e1bd83c123f0abb4f22b1775496997a9"
 
 SRC_URI = " \
 	git://github.com/ursfassler/mumeweb.git;protocol=https;branch=master \

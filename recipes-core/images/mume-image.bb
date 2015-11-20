@@ -9,6 +9,7 @@ IMAGE_INSTALL = " \
   \
   mumesrv-start \
   mumeweb-start \
+  mumehtml \
 "
 
 IMAGE_FEATURES += " \
