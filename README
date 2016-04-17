@@ -42,6 +42,9 @@ URI: git://git.yoctoproject.org/meta-ti
 branch: fido
 revision: HEAD
 
+Important note: With the above configuration, the build will fail because of
+libdrm. Since libdrm is not used in MUME, it can be removed as a workaround.
+Therefore, remove the file `libdrm_2.4.41.bb` from the meta-ti layer.
 
 SD-Image creation
 =================
