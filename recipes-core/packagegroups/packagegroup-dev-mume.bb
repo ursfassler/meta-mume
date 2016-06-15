@@ -45,6 +45,7 @@ RDEPENDS_${PN} = "\
   tcpdump \
   time \
   usbutils \
+  vim \
   wget \
 "
 
