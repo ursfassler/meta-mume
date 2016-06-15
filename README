@@ -11,40 +11,36 @@ Dependencies
 This layer depends on:
 
 URI: git://github.com/meta-qt5/meta-qt5.git
-branch: jethro
+branch: krogoth
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-oe
-branch: jethro
+branch: krogoth
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-webserver
-branch: jethro
+branch: krogoth
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-networking
-branch: jethro
+branch: krogoth
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-python
-branch: jethro
+branch: krogoth
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-ruby
-branch: jethro
+branch: krogoth
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded/meta-systemd
-branch: jethro
+branch: krogoth
 revision: HEAD
 
 URI: git://git.yoctoproject.org/meta-ti
-branch: fido
+branch: krogoth
 revision: HEAD
-
-Important note: With the above configuration, the build will fail because of
-libdrm. Since libdrm is not used in MUME, it can be removed as a workaround.
-Therefore, remove the file `libdrm_2.4.41.bb` from the meta-ti layer.
 
 SD-Image creation
 =================

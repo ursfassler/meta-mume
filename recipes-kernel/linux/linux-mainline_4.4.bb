@@ -27,28 +27,27 @@ DEFAULT_PREFERENCE = "-1"
 
 S = "${WORKDIR}/git"
 
-BRANCH = "linux-4.2.y"
+BRANCH = "linux-4.4.y"
 
-SRCREV = "1c02865136fee1d10d434dc9e3616c8e39905e9b"
-PV = "4.2.6"
+SRCREV = "ba760d4302e4fce130007b8bdbce7fcafc9bd9a9"
+PV = "4.4.13"
 
 SRC_URI = " \
-	git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git;protocol=git;branch=${BRANCH} \
-	file://0001-device-tree-for-beagle-bone-green.patch \
-	file://0002-mume-driver.patch \
-	file://0003-mume-device.patch \
-	file://defconfig \
+    git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git;protocol=git;branch=${BRANCH} \
+    file://0002-mume-driver.patch \
+    file://0003-mume-device.patch \
+    file://defconfig \
 "
 
 # workaround to select correct device tree, replace with nice solution
 do_deploy_append () {
-	# get first entry in list
-	read -r dtfile otherdts << EOF
-	${KERNEL_DEVICETREE}
+    # get first entry in list
+    read -r dtfile otherdts << EOF
+    ${KERNEL_DEVICETREE}
 EOF
 # do not indent above line!
 
-	echo "fdtfile=${dtfile}" > ${DEPLOYDIR}/uEnv.txt
+    echo "fdtfile=${dtfile}" > ${DEPLOYDIR}/uEnv.txt
 }
 
 

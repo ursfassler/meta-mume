@@ -15,10 +15,8 @@ new file mode 100644
 index 0000000..464ec3d
 --- /dev/null
 +++ b/arch/arm/boot/dts/bonegreen-mume.dts
-@@ -0,0 +1,36 @@
-+/dts-v1/;
-+
-+#include "am335x-bonegreen.dtsi"
+@@ -0,0 +1,34 @@
++#include "am335x-bonegreen.dts"
 +
 +/ {
 +  model = "MUME (BeagleBone Green)";
